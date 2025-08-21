@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import DayCell from "./DayCell";
 import { useCalendar } from "../hooks/useCalendar";
 import type { Task } from "../utils/storage";
@@ -152,10 +152,87 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
     return isWithinInterval(day, { start: dfMin([previewStart, previewEnd]), end: dfMax([previewStart, previewEnd]) });
   }, [moving]);
 
+  // Group days into weeks (arrays of 7)
+  const weeks = useMemo(() => {
+    const result: Date[][] = [];
+    for (let i = 0; i < days.length; i += 7) {
+      result.push(days.slice(i, i + 7));
+    }
+    return result;
+  }, [days]);
+
+  // For each week, compute lane assignments so each task occupies a consistent row across days
+  const dayKeyToLanedTasks = useMemo(() => {
+    const map = new Map<string, Array<Task | null>>();
+
+    for (const week of weeks) {
+      const weekStart = week[0];
+      const weekEnd = week[week.length - 1];
+
+      // Tasks intersecting this week (inclusive)
+      const weekTasks = tasks
+        .filter((t) => {
+          const tStart = new Date(t.startDate);
+          const tEnd = new Date(t.endDate);
+          return !(tEnd < weekStart || tStart > weekEnd);
+        })
+        .map((t) => {
+          const tStart = new Date(t.startDate);
+          const tEnd = new Date(t.endDate);
+          const startInWeek = tStart < weekStart ? weekStart : tStart;
+          const endInWeek = tEnd > weekEnd ? weekEnd : tEnd;
+          return { task: t, startInWeek, endInWeek };
+        })
+        .sort((a, b) => a.startInWeek.getTime() - b.startInWeek.getTime());
+
+      // Assign lanes using a greedy interval packing
+      const laneEnds: Date[] = [];
+      const taskLane = new Map<string, number>();
+      for (const item of weekTasks) {
+        let placedLane = -1;
+        for (let lane = 0; lane < laneEnds.length; lane++) {
+          // Non-overlap if previous lane end < current start
+          if (laneEnds[lane] < item.startInWeek) {
+            placedLane = lane;
+            laneEnds[lane] = item.endInWeek;
+            break;
+          }
+        }
+        if (placedLane === -1) {
+          laneEnds.push(item.endInWeek);
+          placedLane = laneEnds.length - 1;
+        }
+        taskLane.set(item.task.id, placedLane);
+      }
+
+      const laneCount = laneEnds.length;
+
+      // Initialize each day's lanes with nulls
+      for (const day of week) {
+        const key = day.toDateString();
+        map.set(key, new Array<Task | null>(laneCount).fill(null));
+      }
+
+      // Fill each day with the task occupying that lane if the task covers that day
+      for (const item of weekTasks) {
+        const lane = taskLane.get(item.task.id)!;
+        for (const day of week) {
+          if (isWithinInterval(day, { start: item.startInWeek, end: item.endInWeek })) {
+            const key = day.toDateString();
+            const arr = map.get(key)!;
+            arr[lane] = item.task;
+          }
+        }
+      }
+    }
+
+    return map;
+  }, [weeks, tasks]);
+
   return (
     <div className="grid grid-cols-7 gap-2 p-2">
       {days.map((day) => {
-        const dayTasks = tasks.filter((t) => isWithinInterval(day, { start: new Date(t.startDate), end: new Date(t.endDate) }));
+        const laned = dayKeyToLanedTasks.get(day.toDateString()) || [];
         const selectedBg = isDaySelected(day) && isSelectionDragging ? 'bg-blue-300' : '';
         const resizeBg = isDayInResizePreview(day) ? 'bg-amber-200' : '';
         const moveBg = isDayInMovePreview(day) ? 'bg-indigo-200' : '';
@@ -163,7 +240,7 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
           <DayCell
             key={day.toISOString()}
             date={day}
-            tasks={dayTasks}
+            lanedTasks={laned}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             classNameProp={`${selectedBg} ${resizeBg} ${moveBg}`.trim()}

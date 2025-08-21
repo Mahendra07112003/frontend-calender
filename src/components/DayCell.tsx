@@ -71,14 +71,14 @@ function TaskSegment({ task, date, onRequestEditTask }: { task: Task; date: Date
 
 type Props = {
   date: Date;
-  tasks: Task[];
+  lanedTasks: Array<Task | null>;
   onDragEnter: (date: Date) => void;
   onDragLeave: (date: Date) => void;
   classNameProp?: string;
   onRequestEditTask: (task: Task) => void;
 };
 
-export default function DayCell({ date, tasks, onDragEnter, onDragLeave, classNameProp, onRequestEditTask }: Props) {
+export default function DayCell({ date, lanedTasks, onDragEnter, onDragLeave, classNameProp, onRequestEditTask }: Props) {
   // Hook for making the DayCell a droppable target
   const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
     id: date.toISOString(), // Unique ID for this droppable day cell
@@ -120,10 +120,14 @@ export default function DayCell({ date, tasks, onDragEnter, onDragLeave, classNa
         <span>{date.getDate()}</span>
       </div>
 
-      {/* Render tasks that intersect this day as horizontal bars */}
+      {/* Render lanes to align tasks into consistent rows across the week */}
       <div className="flex flex-col gap-1 mt-1">
-        {tasks.map((task) => (
-          <TaskSegment key={`${task.id}-${date.toDateString()}`} task={task} date={date} onRequestEditTask={onRequestEditTask} />
+        {lanedTasks.map((task, laneIdx) => (
+          <div key={`${date.toDateString()}-lane-${laneIdx}`} className="min-h-[18px]">
+            {task && (
+              <TaskSegment task={task} date={date} onRequestEditTask={onRequestEditTask} />
+            )}
+          </div>
         ))}
       </div>
     </div>
