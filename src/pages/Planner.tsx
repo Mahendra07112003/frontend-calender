@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Calendar from "../components/Calendar";
 import Header from "../components/Header";
 import { loadTasks, saveTasks, type Task, type TaskCategory } from "../utils/storage";
@@ -26,8 +27,8 @@ const TaskModal = ({ isOpen, startDate, endDate, onClose, onSubmit, initialName 
     setTaskCategory('To Do'); // Reset category
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+  return createPortal(
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[9999] pointer-events-auto">
       <div className="bg-white p-6 rounded-lg shadow-lg relative w-96">
         <h2 className="text-lg font-bold mb-4">{title}</h2>
         <p className="mb-2">Start Date: {startDate?.toLocaleDateString()}</p>
@@ -65,7 +66,7 @@ const TaskModal = ({ isOpen, startDate, endDate, onClose, onSubmit, initialName 
         </div>
       </div>
     </div>
-  );
+  , document.body);
 };
 
 export default function Planner() {
