@@ -230,6 +230,14 @@ export default function Planner() {
 
       {/* Filters and Search */}
       <div className="mb-4 flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <button
+            className="px-3 py-2 bg-blue-600 text-white rounded"
+            onClick={() => handleCreateTask(today, today)}
+          >
+            New Task (today)
+          </button>
+        </div>
         <input
           type="text"
           placeholder="Search by task name..."
