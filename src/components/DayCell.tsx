@@ -115,21 +115,11 @@ export default function DayCell({ date, lanedTasks, onDragEnter, onDragLeave, cl
 			{...attributes}
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
-			onDoubleClick={() => { if (onDoubleClickDay) { alert(`Day double-click: ${date.toDateString()}`); onDoubleClickDay(date); } }}
+			onDoubleClick={() => onDoubleClickDay && onDoubleClickDay(date)}
 			style={{ touchAction: 'none' }}
 		>
 			<div className="text-xs font-bold flex items-center justify-between">
 				<span>{date.getDate()}</span>
-				{onDoubleClickDay && (
-					<button
-						type="button"
-						className="text-[10px] px-1 py-0.5 rounded bg-gray-200 hover:bg-gray-300"
-						onClick={(e) => { e.stopPropagation(); alert(`Day plus clicked: ${date.toDateString()}`); onDoubleClickDay(date); }}
-						onMouseDown={(e) => e.stopPropagation()}
-					>
-						+
-					</button>
-				)}
 			</div>
 
 			{/* Render lanes to align tasks into consistent rows across the week */}

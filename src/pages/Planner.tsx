@@ -234,7 +234,7 @@ export default function Planner() {
         <div className="flex items-center gap-2">
           <button
             className="px-3 py-2 bg-blue-600 text-white rounded"
-            onClick={() => { alert('New Task button clicked'); handleCreateTask(today, today); }}
+            onClick={() => handleCreateTask(today, today)}
           >
             New Task (today)
           </button>
