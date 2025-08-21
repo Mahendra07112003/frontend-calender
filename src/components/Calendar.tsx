@@ -3,7 +3,7 @@ import DayCell from "./DayCell";
 import { useCalendar } from "../hooks/useCalendar";
 import type { Task } from "../utils/storage";
 import { useDndMonitor, type DragEndEvent, type DragStartEvent, type DragOverEvent } from "@dnd-kit/core";
-import { isBefore, isSameDay, isWithinInterval, min as dfMin, max as dfMax } from 'date-fns';
+import { isBefore, isSameDay, isWithinInterval, min as dfMin, max as dfMax, addDays, differenceInCalendarDays } from 'date-fns';
 
 type CalendarProps = {
   month: number;
@@ -27,6 +27,13 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
     taskId: string;
     side: 'left' | 'right';
     hoverDate: Date | null;
+  } | null>(null);
+
+  // Moving state for live preview
+  const [moving, setMoving] = useState<{
+    taskId: string;
+    hoverDate: Date | null;
+    durationDays: number; // inclusive duration in days offset used with addDays
   } | null>(null);
 
   // Callback to handle when the mouse enters a day cell during a drag operation
@@ -55,6 +62,16 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
       if ((type === 'TASK_RESIZE_LEFT' || type === 'TASK_RESIZE_RIGHT') && event.active.data.current?.taskId) {
         setResizing({ taskId: event.active.data.current.taskId as string, side: type === 'TASK_RESIZE_LEFT' ? 'left' : 'right', hoverDate: null });
       }
+      if (type === 'TASK_MOVE' && event.active.data.current?.taskId) {
+        const taskId = event.active.data.current.taskId as string;
+        const task = tasks.find((t) => t.id === taskId);
+        if (task) {
+          const start = new Date(task.startDate);
+          const end = new Date(task.endDate);
+          const duration = differenceInCalendarDays(end, start);
+          setMoving({ taskId, hoverDate: null, durationDays: duration });
+        }
+      }
     },
     onDragOver: (event: DragOverEvent) => {
       const type = event.active.data.current?.type;
@@ -65,6 +82,10 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
       if (type === 'DAY_CELL_SELECTION' && event.over?.data.current?.type === 'DAY_CELL_DROPPABLE') {
         const date = event.over.data.current.date as Date;
         if (isSelectionDragging) setSelectionEnd(date);
+      }
+      if (type === 'TASK_MOVE' && event.over?.data.current?.type === 'DAY_CELL_DROPPABLE') {
+        const date = event.over.data.current.date as Date;
+        setMoving((prev) => prev ? { ...prev, hoverDate: date } : prev);
       }
     },
     onDragEnd: (event: DragEndEvent) => {
@@ -93,12 +114,14 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
       }
 
       setResizing(null);
+      setMoving(null);
     },
     onDragCancel: () => {
       setIsSelectionDragging(false);
       setSelectionStart(null);
       setSelectionEnd(null);
       setResizing(null);
+      setMoving(null);
     },
   });
 
@@ -122,12 +145,20 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
     return isWithinInterval(day, { start: dfMin([previewStart, previewEnd]), end: dfMax([previewStart, previewEnd]) });
   }, [resizing, tasks]);
 
+  const isDayInMovePreview = useCallback((day: Date) => {
+    if (!moving || !moving.hoverDate) return false;
+    const previewStart = moving.hoverDate;
+    const previewEnd = addDays(previewStart, moving.durationDays);
+    return isWithinInterval(day, { start: dfMin([previewStart, previewEnd]), end: dfMax([previewStart, previewEnd]) });
+  }, [moving]);
+
   return (
     <div className="grid grid-cols-7 gap-2 p-2">
       {days.map((day) => {
         const dayTasks = tasks.filter((t) => isWithinInterval(day, { start: new Date(t.startDate), end: new Date(t.endDate) }));
         const selectedBg = isDaySelected(day) && isSelectionDragging ? 'bg-blue-300' : '';
         const resizeBg = isDayInResizePreview(day) ? 'bg-amber-200' : '';
+        const moveBg = isDayInMovePreview(day) ? 'bg-indigo-200' : '';
         return (
           <DayCell
             key={day.toISOString()}
@@ -135,7 +166,7 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
             tasks={dayTasks}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
-            classNameProp={`${selectedBg} ${resizeBg}`.trim()}
+            classNameProp={`${selectedBg} ${resizeBg} ${moveBg}`.trim()}
             onRequestEditTask={onRequestEditTask}
           />
         );
