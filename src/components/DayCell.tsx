@@ -1,18 +1,77 @@
 import React, { useCallback } from "react";
-import EventCard from "./EventCard";
-import type { Event } from "../utils/storage";
+import type { Task } from "../utils/storage";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
+import { isSameDay } from 'date-fns';
+
+const categoryColor: Record<Task['category'], string> = {
+  'To Do': 'bg-blue-500',
+  'In Progress': 'bg-yellow-500',
+  'Review': 'bg-purple-500',
+  'Completed': 'bg-green-600',
+};
+
+function TaskSegment({ task, date, onRequestEditTask }: { task: Task; date: Date; onRequestEditTask: (task: Task) => void }) {
+  const start = new Date(task.startDate);
+  const end = new Date(task.endDate);
+  const isStart = isSameDay(date, start);
+  const isEnd = isSameDay(date, end);
+
+  const moveDraggable = useDraggable({
+    id: `task-move-${task.id}-${date.toISOString()}`,
+    data: { type: 'TASK_MOVE', taskId: task.id },
+  });
+
+  const leftResize = useDraggable({
+    id: `task-resize-left-${task.id}-${date.toISOString()}`,
+    data: { type: 'TASK_RESIZE_LEFT', taskId: task.id },
+  });
+
+  const rightResize = useDraggable({
+    id: `task-resize-right-${task.id}-${date.toISOString()}`,
+    data: { type: 'TASK_RESIZE_RIGHT', taskId: task.id },
+  });
+
+  return (
+    <div className="relative">
+      <div
+        ref={moveDraggable.setNodeRef}
+        {...moveDraggable.listeners}
+        {...moveDraggable.attributes}
+        className={`${categoryColor[task.category]} text-white text-xs px-2 py-1 select-none flex items-center gap-2 ${isStart ? 'rounded-l' : ''} ${isEnd ? 'rounded-r' : ''}`}
+        onDoubleClick={() => onRequestEditTask(task)}
+      >
+        {isStart && (
+          <span
+            ref={leftResize.setNodeRef as unknown as React.Ref<HTMLSpanElement>}
+            {...leftResize.listeners}
+            {...leftResize.attributes}
+            className="w-2 h-3 bg-white/80 rounded-sm cursor-ew-resize"
+          />
+        )}
+        <span className="truncate">{task.name}</span>
+        {isEnd && (
+          <span
+            ref={rightResize.setNodeRef as unknown as React.Ref<HTMLSpanElement>}
+            {...rightResize.listeners}
+            {...rightResize.attributes}
+            className="w-2 h-3 bg-white/80 rounded-sm cursor-ew-resize ml-auto"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   date: Date;
-  events: Event[];
-  onDropEvent: (day: Date, eventId: string) => void;
+  tasks: Task[];
   onDragEnter: (date: Date) => void;
   onDragLeave: (date: Date) => void;
-  classNameProp?: string; // Prop to pass additional class names for styling
+  classNameProp?: string;
+  onRequestEditTask: (task: Task) => void;
 };
 
-export default function DayCell({ date, events, onDropEvent, onDragEnter, onDragLeave, classNameProp }: Props) {
+export default function DayCell({ date, tasks, onDragEnter, onDragLeave, classNameProp, onRequestEditTask }: Props) {
   // Hook for making the DayCell a droppable target
   const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
     id: date.toISOString(), // Unique ID for this droppable day cell
@@ -42,18 +101,22 @@ export default function DayCell({ date, events, onDropEvent, onDragEnter, onDrag
 
   return (
     <div
-      ref={combinedRef} // Apply the combined ref
-      className={`border rounded-md p-2 min-h-[100px] ${isOver ? "bg-blue-200" : "bg-gray-50"} ${classNameProp || ''}`} // Apply classNameProp
-      {...listeners} // Apply draggable listeners
-      {...attributes} // Apply draggable attributes
-      onMouseEnter={handleMouseEnter} // Use for drag selection visual feedback
-      onMouseLeave={handleMouseLeave} // Use for drag selection visual feedback
-      style={{ touchAction: 'none' }} // Needed for touch devices to prevent scrolling during drag
+      ref={combinedRef}
+      className={`border rounded-md p-2 min-h-[100px] ${isOver ? "bg-blue-200" : "bg-gray-50"} ${classNameProp || ''}`}
+      {...listeners}
+      {...attributes}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{ touchAction: 'none' }}
     >
-      <div className="text-xs font-bold">{date.getDate()}</div>
+      <div className="text-xs font-bold flex items-center justify-between">
+        <span>{date.getDate()}</span>
+      </div>
+
+      {/* Render tasks that intersect this day as horizontal bars */}
       <div className="flex flex-col gap-1 mt-1">
-        {events.map((event) => (
-          <EventCard key={event.id} event={event} />
+        {tasks.map((task) => (
+          <TaskSegment key={`${task.id}-${date.toDateString()}`} task={task} date={date} onRequestEditTask={onRequestEditTask} />
         ))}
       </div>
     </div>
