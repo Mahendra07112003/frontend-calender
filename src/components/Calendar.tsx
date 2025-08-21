@@ -42,6 +42,10 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
       setSelectionEnd(date);
     }
   }, [selectionStart, isSelectionDragging]);
+  const handleDoubleClickDay = useCallback((date: Date) => {
+    // Create a single-day task via modal
+    onCreateTask(date, date);
+  }, [onCreateTask]);
 
   // Callback to handle when the mouse leaves a day cell during a drag operation (less critical for selection range)
   const handleDragLeave = useCallback(() => {
@@ -245,6 +249,7 @@ export default function Calendar({ month, year, tasks, onDropTask, onResizeTaskL
             onDragLeave={handleDragLeave}
             classNameProp={`${selectedBg} ${resizeBg} ${moveBg}`.trim()}
             onRequestEditTask={onRequestEditTask}
+            onDoubleClickDay={handleDoubleClickDay}
           />
         );
       })}

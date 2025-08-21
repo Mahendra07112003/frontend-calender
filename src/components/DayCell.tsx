@@ -38,7 +38,7 @@ function TaskSegment({ task, date, onRequestEditTask }: { task: Task; date: Date
         {...moveDraggable.listeners}
         {...moveDraggable.attributes}
         className={`${categoryColor[task.category]} text-white text-xs px-2 py-1 select-none flex items-center gap-2 ${isStart ? 'rounded-l' : ''} ${isEnd ? 'rounded-r' : ''}`}
-        onDoubleClick={() => onRequestEditTask(task)}
+        onDoubleClick={(e) => { e.stopPropagation(); onRequestEditTask(task); }}
       >
         {isStart && (
           <span
@@ -76,9 +76,10 @@ type Props = {
   onDragLeave: (date: Date) => void;
   classNameProp?: string;
   onRequestEditTask: (task: Task) => void;
+  onDoubleClickDay?: (date: Date) => void;
 };
 
-export default function DayCell({ date, lanedTasks, onDragEnter, onDragLeave, classNameProp, onRequestEditTask }: Props) {
+export default function DayCell({ date, lanedTasks, onDragEnter, onDragLeave, classNameProp, onRequestEditTask, onDoubleClickDay }: Props) {
   // Hook for making the DayCell a droppable target
   const { isOver, setNodeRef: setDroppableNodeRef } = useDroppable({
     id: date.toISOString(), // Unique ID for this droppable day cell
@@ -114,6 +115,7 @@ export default function DayCell({ date, lanedTasks, onDragEnter, onDragLeave, cl
       {...attributes}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onDoubleClick={() => onDoubleClickDay && onDoubleClickDay(date)}
       style={{ touchAction: 'none' }}
     >
       <div className="text-xs font-bold flex items-center justify-between">
