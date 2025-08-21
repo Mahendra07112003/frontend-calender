@@ -49,12 +49,19 @@ function TaskSegment({ task, date, onRequestEditTask }: { task: Task; date: Date
           />
         )}
         <span className="truncate">{task.name}</span>
+        <button
+          type="button"
+          className="ml-auto px-1 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px]"
+          onClick={(e) => { e.stopPropagation(); onRequestEditTask(task); }}
+        >
+          Edit
+        </button>
         {isEnd && (
           <span
             ref={rightResize.setNodeRef as unknown as React.Ref<HTMLSpanElement>}
             {...rightResize.listeners}
             {...rightResize.attributes}
-            className="w-2 h-3 bg-white/80 rounded-sm cursor-ew-resize ml-auto"
+            className="w-2 h-3 bg-white/80 rounded-sm cursor-ew-resize ml-2"
           />
         )}
       </div>
