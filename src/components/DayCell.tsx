@@ -115,7 +115,7 @@ export default function DayCell({ date, lanedTasks, onDragEnter, onDragLeave, cl
 			{...attributes}
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
-			onDoubleClick={() => onDoubleClickDay && onDoubleClickDay(date)}
+			onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onDoubleClickDay) onDoubleClickDay(date); }}
 			style={{ touchAction: 'none' }}
 		>
 			<div className="text-xs font-bold flex items-center justify-between">
